@@ -2,6 +2,8 @@ from datasets import load_dataset
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 import torch
 from peft import LoraConfig , get_peft_model
+from transformers import TrainingArguments, Trainer
+
 
 
 dataset = load_dataset("json",data_files="cypher-finetuning-dataset.jsonl",split="train")
@@ -20,3 +22,14 @@ lora_config = LoraConfig(r=8,lora_alpha=16,target_modules=["q_proj", "k_proj", "
     bias="none",
     task_type="CAUSAL_LM")
 peft_model = get_peft_model(model,lora_config)
+
+
+training_args = TrainingArguments(output_dir="./cypher-lora-model",
+    per_device_train_batch_size=4,
+    num_train_epochs=3,
+    learning_rate=2e-4,
+    logging_steps=10,
+    save_steps=50)
+
+
+trainer = Trainer(model=peft_model,args=training_args,train_dataset=dataset,tokenizer=tokenizer)
