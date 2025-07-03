@@ -8,32 +8,51 @@ import textwrap
 
 def parse_json_data(file_path):
     try:
-        with open(file_path,"r") as f:
+        with open(file_path, "r") as f:
             data = json.load(f)
 
-        paper_id = data.get("paper_id","")
-        paper_title = data.get("metadata",{}).get("title","no title that's it")
-
+        paper_id = data.get("paper_id", "")
+        paper_title = data.get("metadata", {}).get("title")
+        if not paper_title or not paper_title.strip():
+            paper_title = "no title that's it"
         document_parts = []
 
-        abstract_part = "\n".join([item.get("text","") for item in data.get("abstract","")])
+        # --- This is our simple, approved list of titles ---
+        # We will check against a lowercase version for case-insensitivity
+        valid_titles_lower = [
+            'abstract', 'introduction', 'background', 'objective', 'methods', 
+            'materials and methods', 'methodology', 'results', 'findings', 
+            'discussion', 'conclusion', 'conclusions', 'summary', 'references', 
+            'acknowledgments', 'funding', 'competing interests', 
+            'conflicts of interest', 'data availability', 'ethics', 'appendix', 
+            'supplementary'
+        ]
 
+        # Add the abstract first, as it's separate in the JSON structure
+        abstract_part = "\n".join([item.get("text", "") for item in data.get("abstract", "")])
         if abstract_part:
-            document_parts.append({"paper_id":paper_id,"paper_title":paper_title,"section_title":"Abstract","section_text":abstract_part})
+            document_parts.append({"paper_id": paper_id, "paper_title": paper_title, "section_title": "Abstract", "section_text": abstract_part})
 
         sections = {}
+        # Default title for any text at the beginning of the body
+        current_section_title = "Introduction"
 
-        current_section_title = ""
-
-        for item in data.get("body_text",[]):
-            if item.get("section") and item["section"].strip():
-                current_section_title = item["section"].strip()
+        for item in data.get("body_text", []):
+            potential_title = item.get("section", "").strip()
+            
+            # --- YOUR LOGIC: Check if the potential title is in our valid list (case-insensitive) ---
+            if potential_title.lower() in valid_titles_lower:
+                # If it's a match, we use it as the new title.
+                current_section_title = potential_title.title()
+            
+            # Aggregate text under the current valid title
             if current_section_title not in sections:
                 sections[current_section_title] = []
-            sections[current_section_title].append(item.get("text",""))
+            sections[current_section_title].append(item.get("text", ""))
 
-        for sec_title , text_title in sections.items():
-            full_section_text = "\n\n".join(text_title)
+        # Add the aggregated sections to our main list
+        for sec_title, text_list in sections.items():
+            full_section_text = "\n\n".join(text_list)
             if full_section_text:
                 document_parts.append({
                     'paper_id': paper_id,
@@ -42,28 +61,10 @@ def parse_json_data(file_path):
                     'section_text': full_section_text
                 })
         return document_parts
+        
     except (json.JSONDecodeError, KeyError, FileNotFoundError) as e:
         print(f"Could not process file {os.path.basename(file_path)}: {e}")
         return []
-
-all_sections_data = []
-# Get a list of all json files. Use a slice for faster testing.
-json_files = os.listdir(PDF_JSON_PATH)
-
-for filename in tqdm(json_files, desc="Parsing Papers into Sections (Corrected)"):
-    file_path = os.path.join(PDF_JSON_PATH, filename)
-    # Call the new, robust function
-    sections = parse_json_data(file_path)
-    if sections:
-        all_sections_data.extend(sections)
-
-# Convert the list of dictionaries into a pandas DataFrame
-df_sections = pd.DataFrame(all_sections_data)
-
-print(f"Successfully parsed {len(df_sections)} sections from {df_sections['paper_id'].nunique()} papers.")
-df_sections.info()
-print("\nVerifying section titles:")
-print(df_sections['section_title'].value_counts().head(10))
 
 def clean_text(text):
     text = re.sub(r'\[\d+(?:, ?\d+)*(?:-\d+)*\]',"",text) # for [1]
