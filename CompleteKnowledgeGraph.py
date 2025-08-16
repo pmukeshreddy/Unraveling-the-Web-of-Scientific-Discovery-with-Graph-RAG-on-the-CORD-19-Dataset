@@ -10,6 +10,7 @@ from transformers import pipeline
 from itertools import combinations
 
 class KnowledgeGraphBuilder:
+    
     def __init__(self, neo4j_uri, neo4j_user, neo4j_password):
         self.driver = GraphDatabase.driver(neo4j_uri, auth=(neo4j_user, neo4j_password))
         # Load NER pipeline (general model, but good for starters)
