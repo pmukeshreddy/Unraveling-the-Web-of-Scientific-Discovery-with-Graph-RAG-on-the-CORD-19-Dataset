@@ -18,8 +18,10 @@ class KnowledgeGraphBuilder:
         print("✅ Loaded transformers NER model")
 
     def close(self):
+        
         self.driver.close()
     def extract_entities_from_chunks(self, df_chunks, batch_size=500):
+        
         print(f"🔍 Extracting entities from {len(df_chunks)} chunks...")
         all_mentions = []
         entity_frequencies = Counter()
