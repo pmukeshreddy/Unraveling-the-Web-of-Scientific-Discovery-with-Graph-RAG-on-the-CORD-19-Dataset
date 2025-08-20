@@ -3,6 +3,7 @@ def parse_json_data(file_path):
         with open(file_path, "r") as f:
             data = json.load(f)
         paper_id = data.get("paper_id", "")
+        
         paper_title = data.get("metadata", {}).get("title", "no title that's it")
         if not paper_title or not paper_title.strip():
             paper_title = "no title that's it"
